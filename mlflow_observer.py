@@ -7,6 +7,8 @@ from mlflow.tracking import MlflowClient
 from mlflow import (
     set_tracking_uri,
     set_experiment,
+    set_tag,
+    set_tags,
     start_run,
     end_run,
     log_params
@@ -18,6 +20,13 @@ __version__ = "0.0.1"
 
 class MlflowObserver(RunObserver):
     """Observe configuration, metrics and artifacts with mlflow.
+
+    Some info captured by Sacred is also saved:
+    - host info,
+    - sacred id (to allow linking between the mlflow database and any potential
+      other Sacred observers (e.g. a file storage observer)), and
+    - source file information (for the same reason).
+    These are saved as tags.
 
     Parameters
     ----------
@@ -71,6 +80,10 @@ class MlflowObserver(RunObserver):
         run = start_run(run_name=name)
 
         log_params(config)
+
+        set_tag('sacred_id', _id)
+        set_tags({'host_info.'+k: v for k, v in host_info.items()})
+        set_tags({'sources.'+s[0]: s[1] for s in ex_info['sources']})
 
         self._run_id = run.info._run_id
 
