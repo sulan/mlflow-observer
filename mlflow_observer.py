@@ -1,5 +1,6 @@
 import os
 import datetime
+import collections
 from sacred.observers import RunObserver
 
 from mlflow.entities import RunStatus, Metric
@@ -79,7 +80,7 @@ class MlflowObserver(RunObserver):
 
         run = start_run(run_name=name)
 
-        log_params(config)
+        log_params(flatten_dict(config))
 
         set_tag('sacred_id', _id)
         set_tags({'host_info.'+k: v for k, v in host_info.items()})
@@ -136,3 +137,27 @@ class MlflowObserver(RunObserver):
             self._client.log_artifacts(self._run_id, local_dir=filename, artifact_path=dir_name)
         else:
             self._client.log_artifact(self._run_id, local_path=filename)
+
+def flatten_dict(d: collections.abc.Mapping, sep = '.') -> dict:
+    """
+    Returns a new dictionary where none of the values are dictionaries.
+
+    The only exception is the empty dictionary (`{}`), which is retained.
+    """
+    # Inspired by:
+    # https://www.freecodecamp.org/news/how-to-flatten-a-dictionary-in-python-in-4-different-ways/
+
+    def _flatten_dict(d, parent_key):
+        if not parent_key:
+            parent_key = ''
+        else:
+            parent_key = parent_key + sep
+        for k, v in d.items():
+            new_key = parent_key + k
+            # Check for empty dictionary
+            if isinstance(v, collections.abc.Mapping) and v:
+                yield from _flatten_dict(v, new_key)
+            else:
+                yield parent_key + k, v
+
+    return dict(_flatten_dict(d, parent_key=None))
